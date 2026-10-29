@@ -1,0 +1,886 @@
+```html
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Digibord Klassenmatrix</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Quicksand', sans-serif;
+      background-color: #f8fafc;
+      color: #1e293b;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    h1, h2, h3, .font-heading {
+      font-family: 'Fredoka', sans-serif;
+    }
+
+    /* Pasteltinten Statuskleuren */
+    .bg-pastel-red { background-color: #fecdd3; border-color: #fda4af; color: #9f1239; }
+    .bg-pastel-orange { background-color: #ffedd5; border-color: #fed7aa; color: #c2410c; }
+    .bg-pastel-green { background-color: #dcfce7; border-color: #bbf7d0; color: #15803d; }
+    .bg-pastel-gray { background-color: #f1f5f9; border-color: #e2e8f0; color: #94a3b8; }
+
+    /* Actieve Status voor Gelezen/Geselecteerde Rij of Kolom */
+    .bg-pastel-red.active-cell { background-color: #fda4af; border-color: #f43f5e; color: #881337; transform: scale(1.03); box-shadow: 0 4px 12px rgba(244, 63, 94, 0.25); }
+    .bg-pastel-orange.active-cell { background-color: #fed7aa; border-color: #fb923c; color: #9a3412; transform: scale(1.03); box-shadow: 0 4px 12px rgba(251, 146, 60, 0.25); }
+    .bg-pastel-green.active-cell { background-color: #bbf7d0; border-color: #4ade80; color: #166534; transform: scale(1.03); box-shadow: 0 4px 12px rgba(74, 222, 128, 0.25); }
+    
+    /* Hulp-cel styling */
+    .bg-hulp-active { background-color: #fef08a; border-color: #fde047; color: #854d0e; font-weight: 800; transform: scale(1.05); box-shadow: 0 4px 12px rgba(234, 179, 8, 0.3); }
+
+    .disabled-cell { opacity: 0.35; cursor: not-allowed; filter: grayscale(80%); }
+
+    /* Custom scrollbar voor Digibord */
+    ::-webkit-scrollbar { width: 14px; height: 14px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 8px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; border: 3px solid #f1f5f9; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* Fixed / Sticky positionering bij scrollen */
+    .sticky-top-left { position: sticky; top: 0; left: 0; z-index: 50; }
+    .sticky-top { position: sticky; top: 0; z-index: 30; }
+    .sticky-left { position: sticky; left: 0; z-index: 20; }
+
+    /* Achtergrondafdekking voor sticky headers om doorkijk te voorkomen */
+    th.sticky-top-left, th.sticky-top, td.sticky-left {
+      background-clip: padding-box;
+    }
+
+    /* Magje kolom accent */
+    .magje-col-bg { background-color: rgba(243, 232, 255, 0.4); }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- APP CONTAINER -->
+  <div id="app" class="flex-1 flex flex-col">
+    
+    <!-- STAP 1: LEERKRACHT SETUP (Ingeven Namen & Taken) -->
+    <div id="step-setup" class="max-w-4xl w-full mx-auto p-6 md:p-8 my-auto">
+      <div class="bg-white rounded-3xl shadow-xl border border-slate-200 p-8">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="p-3 bg-indigo-100 text-indigo-600 rounded-2xl">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+          </div>
+          <div>
+            <h1 class="text-3xl font-bold text-slate-800 font-heading">Digibord Matrix Instellen</h1>
+            <p class="text-slate-500 font-medium">Voer de namen van de leerlingen en de opdrachten in.</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
+          <!-- Leerlingen Invoer -->
+          <div class="flex flex-col">
+            <label class="block font-heading text-lg font-bold text-slate-700 mb-2">
+              1. Leerlingen <span class="text-xs font-normal text-slate-500">(één naam per regel)</span>
+            </label>
+            <textarea id="input-students" class="w-full flex-1 min-h-[220px] p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl focus:border-indigo-500 focus:bg-white focus:outline-none transition font-medium text-slate-700" placeholder="Emma&#10;Lucas&#10;Milan&#10;Sophie&#10;Liam"></textarea>
+          </div>
+          <!-- Taken Invoer -->
+          <div class="flex flex-col">
+            <label class="block font-heading text-lg font-bold text-slate-700 mb-2">
+              2. Taken / Opdrachten <span class="text-xs font-normal text-slate-500">(één taak per regel)</span>
+            </label>
+            <div id="tasks-input-container" class="space-y-3 max-h-[260px] overflow-y-auto pr-2">
+              <!-- Dynamische rijen voor taken -->
+            </div>
+            <button onclick="addTaskInputRow()" class="mt-3 py-2 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl border border-slate-300 transition text-sm flex items-center justify-center gap-2">
+              <span>+ Taak Toevoegen</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Optie voor Hulpvragen -->
+        <div class="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-4 mb-8 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-indigo-100 text-indigo-700 rounded-xl flex items-center justify-center font-bold text-xl">?</div>
+            <div>
+              <span class="font-heading font-bold text-slate-800 text-base block">Hulp-functie inschakelen</span>
+              <span class="text-xs text-slate-500 font-medium">Toon een kolom/rij waarmee leerlingen hulp kunnen vragen met automatische volgnummers.</span>
+            </div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="toggle-help-feature" class="sr-only peer" checked>
+            <div class="w-14 h-7 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-indigo-600"></div>
+          </label>
+        </div>
+
+        <button onclick="goToConfig()" class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-heading font-bold text-xl rounded-2xl shadow-lg shadow-indigo-200 transition transform active:scale-[0.99] flex items-center justify-center gap-3">
+          <span>Naar Configuratie</span>
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- STAP 2: LEERKRACHT CONFIGURATIE (Vrijstellingen aanduiden) -->
+    <div id="step-config" class="hidden max-w-6xl w-full mx-auto p-6 my-auto">
+      <div class="bg-white rounded-3xl shadow-xl border border-slate-200 p-8">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-slate-100">
+          <div>
+            <h1 class="text-3xl font-bold text-slate-800 font-heading">Vrijstellingen & Types Aanduiden</h1>
+            <p class="text-slate-500 font-medium">Klik op een vakje om een taak voor een leerling <span class="font-bold text-slate-700">uit te schakelen (grijs)</span>.</p>
+          </div>
+          <div class="flex gap-3">
+            <button onclick="goToSetup()" class="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl transition">
+              ← Terug
+            </button>
+            <button onclick="startMatrix()" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-heading font-bold text-lg rounded-2xl shadow-lg shadow-emerald-200 transition flex items-center gap-2">
+              <span>Start Digibord</span>
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Legende & Opties Config -->
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div class="flex flex-wrap gap-4 text-sm font-semibold">
+            <div class="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+              <div class="w-6 h-6 rounded-lg bg-pastel-red border flex items-center justify-center font-bold text-xs">!</div>
+              <span>Moet gemaakt worden</span>
+            </div>
+            <div class="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+              <div class="w-6 h-6 rounded-lg bg-pastel-gray border flex items-center justify-center font-bold text-xs text-slate-400">✕</div>
+              <span>Vrijgesteld (Niet maken)</span>
+            </div>
+          </div>
+
+          <!-- Snelle Toggle Hulpvragen -->
+          <label class="flex items-center gap-2 text-sm font-bold text-slate-700 bg-indigo-50 px-3.5 py-1.5 rounded-xl border border-indigo-100 cursor-pointer">
+            <input type="checkbox" id="toggle-help-feature-config" onchange="syncHelpToggle(this.checked)" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" checked>
+            <span>Hulp-optie actief</span>
+          </label>
+        </div>
+
+        <p class="text-xs text-slate-500 font-medium mb-2">💡 Tip: Klik op een naam van een leerling of taak om de **hele rij of kolom** in één keer in/uit te schakelen.</p>
+
+        <!-- Tabel Voor Config -->
+        <div class="overflow-x-auto rounded-2xl border border-slate-200 shadow-inner max-h-[500px] overflow-y-auto">
+          <table class="w-full border-collapse">
+            <thead>
+              <tr id="config-header" class="bg-slate-100 text-slate-700 sticky top-0 z-10 shadow-sm">
+                <!-- Dynamisch -->
+              </tr>
+            </thead>
+            <tbody id="config-body" class="divide-y divide-slate-200 bg-white">
+              <!-- Dynamisch -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAP 3: DIGIBORD MATRIX (LEERLINGEN MODUS) -->
+    <div id="step-matrix" class="hidden flex-1 flex flex-col h-screen overflow-hidden bg-slate-100 relative">
+      
+      <!-- Top Bar / Header -->
+      <header id="matrix-top-header" class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shadow-sm z-20">
+        <div class="flex items-center gap-4">
+          <h1 class="text-2xl font-bold font-heading text-slate-800 tracking-wide">Klassenmatrix</h1>
+          <div class="h-6 w-px bg-slate-200"></div>
+          
+          <!-- Legende -->
+          <div class="flex items-center gap-3 text-xs md:text-sm font-bold">
+            <div class="flex items-center gap-1.5 px-3 py-1 bg-rose-50 border border-rose-200 text-rose-700 rounded-full">
+              <span class="w-5 h-5 rounded-full bg-pastel-red border border-rose-300 flex items-center justify-center text-xs font-bold">!</span>
+              <span>Nog niet gestart</span>
+            </div>
+            <div class="flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200 text-amber-700 rounded-full">
+              <span class="w-5 h-5 rounded-full bg-pastel-orange border border-amber-300 flex items-center justify-center text-xs">⌛</span>
+              <span>Bezig</span>
+            </div>
+            <div class="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full">
+              <span class="w-5 h-5 rounded-full bg-pastel-green border border-emerald-300 flex items-center justify-center text-xs">✓</span>
+              <span>Klaar</span>
+            </div>
+            <div class="flex items-center gap-1.5 px-3 py-1 bg-slate-100 border border-slate-200 text-slate-500 rounded-full">
+              <span class="w-5 h-5 rounded-full bg-pastel-gray border border-slate-300 flex items-center justify-center text-xs">✕</span>
+              <span>Vrijgesteld</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <!-- Oriëntatie wisselen -->
+          <button onclick="toggleOrientation()" class="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl border border-indigo-200 transition text-sm flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            <span id="orientation-label">Draai Matrix ↻</span>
+          </button>
+          
+          <button onclick="resetProgress()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl border border-slate-300 transition text-sm flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            <span>Reset Status</span>
+          </button>
+          <button onclick="goToSetup()" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl transition text-sm flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
+            <span>Leerkracht</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Matrix Tabel Container -->
+      <main id="matrix-main-container" class="flex-1 overflow-auto p-4 md:p-6">
+        <div class="relative max-h-[calc(100vh-100px)] overflow-auto bg-white rounded-3xl shadow-lg border border-slate-200">
+          
+          <table id="digibord-table" class="min-w-full border-separate border-spacing-0">
+            <thead id="matrix-header">
+              <!-- Dynamisch gegenereerd -->
+            </thead>
+            <tbody id="matrix-body" class="divide-y divide-slate-200 bg-white">
+              <!-- Dynamisch gegenereerd -->
+            </tbody>
+          </table>
+        </div>
+      </main>
+
+    </div>
+
+  </div>
+
+  <!-- SCRIPT LOGICA -->
+  <script>
+    // DATA STATE
+    let students = [];
+    let tasks = []; // Objects: { name: string, type: 'moetje' | 'magje' }
+    let matrixData = {}; // Format: { studentIndex: { taskIndex: 'red' | 'orange' | 'green' | 'gray' } }
+    let helpQueue = []; // Array of studentIndices in order of help request
+    let activeStudentIndex = null; // Currently selected student (null = none)
+    let autoDeselectTimer = null;
+    let isRotated = false; // False = Normal (Students in Rows), True = Rotated (Tasks in Rows)
+    let enableHelpFeature = true; // Global toggle for Help feature
+    let isFullscreenMode = false;
+
+    // DEFAULT DATA
+    const defaultStudents = ["Emma", "Lucas", "Milan", "Sophie", "Liam", "Noah", "Lotte"];
+    const defaultTasks = [
+      { name: "Wiskunde p. 12", type: "moetje" },
+      { name: "Taal Woordenschat", type: "moetje" },
+      { name: "Lezen Hoofdstuk 3", type: "moetje" },
+      { name: "Samenwerken Quiz", type: "magje" },
+      { name: "Tekenopdracht", type: "magje" }
+    ];
+
+    // INIT
+    window.onload = function() {
+      // Probeer eerder opgeslagen data te laden uit LocalStorage
+      const savedStudents = localStorage.getItem('digibord_students');
+      const savedTasks = localStorage.getItem('digibord_tasks');
+      const savedHelpSetting = localStorage.getItem('digibord_enableHelp');
+      const savedMatrixData = localStorage.getItem('digibord_matrixData');
+
+      if (savedStudents) {
+        students = JSON.parse(savedStudents);
+        document.getElementById('input-students').value = students.join('\n');
+      } else {
+        document.getElementById('input-students').value = defaultStudents.join('\n');
+      }
+
+      if (savedTasks) {
+        tasks = JSON.parse(savedTasks);
+        renderTaskInputs(tasks);
+      } else {
+        renderTaskInputs(defaultTasks);
+      }
+
+      if (savedHelpSetting !== null) {
+        enableHelpFeature = JSON.parse(savedHelpSetting);
+        document.getElementById('toggle-help-feature').checked = enableHelpFeature;
+        document.getElementById('toggle-help-feature-config').checked = enableHelpFeature;
+      }
+
+      if (savedMatrixData) {
+        matrixData = JSON.parse(savedMatrixData);
+      }
+    };
+
+    function saveDataToStorage() {
+      localStorage.setItem('digibord_students', JSON.stringify(students));
+      localStorage.setItem('digibord_tasks', JSON.stringify(tasks));
+      localStorage.setItem('digibord_enableHelp', JSON.stringify(enableHelpFeature));
+      localStorage.setItem('digibord_matrixData', JSON.stringify(matrixData));
+    }
+
+    function syncHelpToggle(val) {
+      enableHelpFeature = val;
+      document.getElementById('toggle-help-feature').checked = val;
+      document.getElementById('toggle-help-feature-config').checked = val;
+      saveDataToStorage();
+    }
+
+    function toggleFullscreenView() {
+      isFullscreenMode = !isFullscreenMode;
+      const topHeader = document.getElementById('matrix-top-header');
+      const exitBtn = document.getElementById('btn-exit-fullscreen');
+      const mainContainer = document.getElementById('matrix-main-container');
+
+      if (isFullscreenMode) {
+        topHeader.classList.add('hidden');
+        exitBtn.classList.remove('hidden');
+        mainContainer.classList.remove('p-4', 'md:p-6');
+        mainContainer.classList.add('p-2');
+      } else {
+        topHeader.classList.remove('hidden');
+        exitBtn.classList.add('hidden');
+        mainContainer.classList.add('p-4', 'md:p-6');
+        mainContainer.classList.remove('p-2');
+      }
+    }
+
+    // RENDER TASK INPUTS IN SETUP
+    function renderTaskInputs(taskList) {
+      const container = document.getElementById('tasks-input-container');
+      container.innerHTML = '';
+      taskList.forEach((task, index) => {
+        addTaskInputRow(task.name, task.type);
+      });
+    }
+
+    function addTaskInputRow(name = '', type = 'moetje') {
+      const container = document.getElementById('tasks-input-container');
+      const div = document.createElement('div');
+      div.className = 'flex items-center gap-2 task-input-row';
+      div.innerHTML = `
+        <input type="text" class="task-name-input flex-1 p-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-indigo-500 focus:bg-white focus:outline-none font-medium text-slate-700 text-sm" placeholder="Naam van taak..." value="${name}">
+        <select class="task-type-select p-2.5 bg-slate-100 border-2 border-slate-200 rounded-xl font-bold text-xs text-slate-700 focus:outline-none">
+          <option value="moetje" ${type === 'moetje' ? 'selected' : ''}>★ Moetje</option>
+          <option value="magje" ${type === 'magje' ? 'selected' : ''}>☁ Magje</option>
+        </select>
+        <button onclick="this.parentElement.remove()" class="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+        </button>
+      `;
+      container.appendChild(div);
+    }
+
+    function getTasksFromInputs() {
+      const rows = document.querySelectorAll('.task-input-row');
+      const taskList = [];
+      rows.forEach(row => {
+        const name = row.querySelector('.task-name-input').value.trim();
+        const type = row.querySelector('.task-type-select').value;
+        if (name) {
+          taskList.push({ name, type });
+        }
+      });
+      return taskList;
+    }
+
+    // NAVIGATION
+    function goToSetup() {
+      document.getElementById('step-setup').classList.remove('hidden');
+      document.getElementById('step-config').classList.add('hidden');
+      document.getElementById('step-matrix').classList.add('hidden');
+    }
+
+    function goToConfig() {
+      const rawStudents = document.getElementById('input-students').value.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+      const rawTasks = getTasksFromInputs();
+
+      if (rawStudents.length === 0 || rawTasks.length === 0) {
+        alert("Vul A.U.B. ten minste één leerling en één taak in.");
+        return;
+      }
+
+      enableHelpFeature = document.getElementById('toggle-help-feature').checked;
+      document.getElementById('toggle-help-feature-config').checked = enableHelpFeature;
+
+      students = rawStudents;
+      tasks = sortTasksMoetjesFirst(rawTasks);
+
+      // Gebruik bestaande matrixData als de namen en taken overeenkomen, anders opnieuw initialiseren
+      if (!matrixData || Object.keys(matrixData).length === 0) {
+        matrixData = {};
+        students.forEach((_, sIdx) => {
+          matrixData[sIdx] = {};
+          tasks.forEach((_, tIdx) => {
+            matrixData[sIdx][tIdx] = 'red';
+          });
+        });
+      }
+
+      helpQueue = [];
+      saveDataToStorage();
+      generateConfigMatrix();
+
+      document.getElementById('step-setup').classList.add('hidden');
+      document.getElementById('step-config').classList.remove('hidden');
+      document.getElementById('step-matrix').classList.add('hidden');
+    }
+
+    // Helper: Sort tasks so 'moetjes' are always first, 'magjes' at the end
+    function sortTasksMoetjesFirst(taskList) {
+      return [...taskList].sort((a, b) => {
+        if (a.type === 'moetje' && b.type === 'magje') return -1;
+        if (a.type === 'magje' && b.type === 'moetje') return 1;
+        return 0;
+      });
+    }
+
+    // GENERATE CONFIG MATRIX (STAP 2)
+    function generateConfigMatrix() {
+      const headerTr = document.getElementById('config-header');
+      const bodyTbody = document.getElementById('config-body');
+
+      let headerHTML = `<th class="p-4 text-left font-heading text-lg font-bold">Leerlingen</th>`;
+      tasks.forEach((t, tIdx) => {
+        const isMoetje = t.type === 'moetje';
+        headerHTML += `
+          <th class="p-4 text-center font-heading text-md font-bold hover:bg-slate-200/60 cursor-pointer rounded-t-xl transition" onclick="toggleWholeColumnInConfig(${tIdx})" title="Klik om hele kolom in/uit te schakelen">
+            <div class="flex flex-col items-center gap-1">
+              <span>${t.name}</span>
+              <button onclick="event.stopPropagation(); toggleTaskTypeInConfig(${tIdx})" class="px-2.5 py-0.5 rounded-full text-xs font-bold transition ${isMoetje ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-purple-100 text-purple-800 border border-purple-300'}">
+                ${isMoetje ? '★ Moetje' : '☁ Magje'}
+              </button>
+            </div>
+          </th>`;
+      });
+      headerTr.innerHTML = headerHTML;
+
+      let bodyHTML = '';
+      students.forEach((s, sIdx) => {
+        bodyHTML += `<tr class="hover:bg-slate-50">
+          <td class="p-4 font-bold text-slate-800 font-heading text-lg hover:bg-slate-200/60 cursor-pointer transition rounded-l-xl" onclick="toggleWholeRowInConfig(${sIdx})" title="Klik om hele rij in/uit te schakelen">${s}</td>`;
+        
+        tasks.forEach((_, tIdx) => {
+          const status = matrixData[sIdx][tIdx];
+          const isRed = status === 'red';
+          bodyHTML += `
+            <td class="p-3 text-center">
+              <button onclick="toggleConfigCell(${sIdx}, ${tIdx})" class="w-12 h-12 rounded-2xl border-2 font-bold text-lg inline-flex items-center justify-center transition ${isRed ? 'bg-pastel-red border-rose-300 text-rose-800' : 'bg-pastel-gray border-slate-300 text-slate-400'}">
+                ${isRed ? '!' : '✕'}
+              </button>
+            </td>`;
+        });
+
+        bodyHTML += `</tr>`;
+      });
+      bodyTbody.innerHTML = bodyHTML;
+    }
+
+    function toggleWholeRowInConfig(sIdx) {
+      // Als minstens 1 op 'red' staat, zet alles op 'gray'. Anders alles op 'red'.
+      const currentStatuses = tasks.map((_, tIdx) => matrixData[sIdx][tIdx]);
+      const hasRed = currentStatuses.includes('red');
+      const targetStatus = hasRed ? 'gray' : 'red';
+
+      tasks.forEach((_, tIdx) => {
+        matrixData[sIdx][tIdx] = targetStatus;
+      });
+      saveDataToStorage();
+      generateConfigMatrix();
+    }
+
+    function toggleWholeColumnInConfig(tIdx) {
+      // Als minstens 1 op 'red' staat, zet hele kolom op 'gray'. Anders alles op 'red'.
+      const currentStatuses = students.map((_, sIdx) => matrixData[sIdx][tIdx]);
+      const hasRed = currentStatuses.includes('red');
+      const targetStatus = hasRed ? 'gray' : 'red';
+
+      students.forEach((_, sIdx) => {
+        matrixData[sIdx][tIdx] = targetStatus;
+      });
+      saveDataToStorage();
+      generateConfigMatrix();
+    }
+
+    function toggleTaskTypeInConfig(tIdx) {
+      // Toggle type
+      tasks[tIdx].type = tasks[tIdx].type === 'moetje' ? 'magje' : 'moetje';
+
+      // Re-sort tasks and update matrixData columns accordingly
+      const oldTasks = [...tasks];
+      const newTasks = sortTasksMoetjesFirst(tasks);
+
+      // Re-map matrix data to match new task positions
+      const newMatrixData = {};
+      students.forEach((_, sIdx) => {
+        newMatrixData[sIdx] = {};
+        newTasks.forEach((newTask, newTIdx) => {
+          const oldTIdx = oldTasks.findIndex(t => t === newTask);
+          newMatrixData[sIdx][newTIdx] = matrixData[sIdx][oldTIdx];
+        });
+      });
+
+      tasks = newTasks;
+      matrixData = newMatrixData;
+      saveDataToStorage();
+      generateConfigMatrix();
+    }
+
+    function toggleConfigCell(sIdx, tIdx) {
+      // Toggle between 'red' (actief) en 'gray' (vrijgesteld)
+      matrixData[sIdx][tIdx] = matrixData[sIdx][tIdx] === 'red' ? 'gray' : 'red';
+      saveDataToStorage();
+      generateConfigMatrix();
+    }
+
+    // START DIGIBORD MATRIX (STAP 3)
+    function startMatrix() {
+      saveDataToStorage();
+      document.getElementById('step-setup').classList.add('hidden');
+      document.getElementById('step-config').classList.add('hidden');
+      document.getElementById('step-matrix').classList.remove('hidden');
+
+      renderMatrix();
+    }
+
+    function toggleOrientation() {
+      isRotated = !isRotated;
+      document.getElementById('orientation-label').innerText = isRotated ? 'Normaal ↻' : 'Draai Matrix ↻';
+      renderMatrix();
+    }
+
+    function renderMatrix() {
+      if (isRotated) {
+        renderMatrixRotated();
+      } else {
+        renderMatrixNormal();
+      }
+    }
+
+    // NORMELE WEERGAVE: Namen in Rijen, Taken in Kolommen (Vaste header bovenaan, vaste kolom links)
+    function renderMatrixNormal() {
+      const headerTr = document.getElementById('matrix-header');
+      const bodyTbody = document.getElementById('matrix-body');
+
+      // 1. Vaste Header Rij (Sticky Top) met Hoekcel (Sticky Top-Left) - Nu leeg zonder tekst
+      let headerHTML = `
+        <tr class="bg-slate-100 border-b border-slate-200">
+          <th class="sticky-top-left bg-slate-100 p-4 min-w-[180px] shadow-sm border-b border-r border-slate-200"></th>`;
+
+      if (enableHelpFeature) {
+        headerHTML += `
+          <th class="sticky-top bg-slate-100 p-4 text-center font-heading text-lg font-bold text-indigo-900 border-b border-r border-slate-200 min-w-[110px] shadow-sm">
+            <div class="flex flex-col items-center justify-center">
+              <span class="text-xs uppercase tracking-wider text-indigo-500 font-extrabold mb-0.5">Hulp</span>
+              <span class="text-xl">?</span>
+            </div>
+          </th>`;
+      }
+
+      tasks.forEach((t) => {
+        const isMoetje = t.type === 'moetje';
+        headerHTML += `
+          <th class="sticky-top p-4 text-center font-heading text-lg font-bold text-slate-700 min-w-[130px] ${!isMoetje ? 'magje-col-bg' : 'bg-slate-100'} shadow-sm border-b border-slate-200">
+            <div class="flex items-center justify-center gap-1.5">
+              ${isMoetje ? '<span class="text-amber-500 font-bold text-xl leading-none">★</span>' : ''}
+              <span class="leading-tight">${t.name}</span>
+            </div>
+          </th>`;
+      });
+      headerHTML += `</tr>`;
+      headerTr.innerHTML = headerHTML;
+
+      // 2. Body Rows
+      let bodyHTML = '';
+      students.forEach((sName, sIdx) => {
+        const isSelected = activeStudentIndex === sIdx;
+
+        bodyHTML += `
+          <tr class="transition-colors ${isSelected ? 'bg-amber-50/70' : 'hover:bg-slate-50/80'}">
+            <!-- Vaste Naam Knop (Sticky Left) -->
+            <td class="sticky-left p-3 bg-white shadow-sm border-r border-slate-200">
+              <button onclick="selectStudent(${sIdx})" class="w-full text-left px-4 py-3 rounded-2xl font-heading text-lg font-bold transition flex items-center justify-between gap-2 border-2 ${isSelected ? 'bg-indigo-600 text-white border-indigo-700 shadow-md scale-[1.02]' : 'bg-slate-100 text-slate-800 border-slate-200 hover:border-slate-300'}">
+                <span class="truncate">${sName}</span>
+              </button>
+            </td>`;
+
+        // Optionele Hulp Cel
+        if (enableHelpFeature) {
+          const helpPos = helpQueue.indexOf(sIdx);
+          const hasHelp = helpPos !== -1;
+          bodyHTML += `
+            <td class="p-3 text-center border-r border-slate-200">
+              <button onclick="toggleHelp(${sIdx})" class="w-14 h-14 rounded-2xl border-2 font-extrabold text-xl inline-flex items-center justify-center transition ${hasHelp ? 'bg-hulp-active border-yellow-400' : 'bg-slate-50 border-slate-200 text-slate-300 hover:text-slate-400'}">
+                ${hasHelp ? helpPos + 1 : '?'}
+              </button>
+            </td>`;
+        }
+
+        // Task Cellen
+        tasks.forEach((t, tIdx) => {
+          const status = matrixData[sIdx][tIdx];
+          const isMoetje = t.type === 'moetje';
+          bodyHTML += `
+            <td class="p-3 text-center border-b border-slate-100 ${!isMoetje ? 'magje-col-bg' : ''}">
+              ${renderCellButton(sIdx, tIdx, status, isSelected)}
+            </td>`;
+        });
+
+        bodyHTML += `</tr>`;
+      });
+
+      bodyTbody.innerHTML = bodyHTML;
+    }
+
+    // GEDRAAIDE WEERGAVE: Taken in Rijen, Namen in Kolommen (Vaste header bovenaan, vaste kolom links)
+    function renderMatrixRotated() {
+      const headerTr = document.getElementById('matrix-header');
+      const bodyTbody = document.getElementById('matrix-body');
+
+      // 1. Vaste Header Rij (Sticky Top) met Hoekcel (Sticky Top-Left) - Nu leeg zonder tekst
+      let headerHTML = `
+        <tr class="bg-slate-100 border-b border-slate-200">
+          <th class="sticky-top-left bg-slate-100 p-4 min-w-[200px] shadow-sm border-b border-r border-slate-200"></th>`;
+
+      students.forEach((sName, sIdx) => {
+        const isSelected = activeStudentIndex === sIdx;
+        headerHTML += `
+          <th class="sticky-top p-3 text-center min-w-[130px] bg-slate-100 shadow-sm border-b border-slate-200">
+            <button onclick="selectStudent(${sIdx})" class="w-full text-center px-3 py-3 rounded-2xl font-heading text-lg font-bold transition flex items-center justify-center border-2 ${isSelected ? 'bg-indigo-600 text-white border-indigo-700 shadow-md scale-[1.02]' : 'bg-white text-slate-800 border-slate-200 hover:border-slate-300'}">
+              <span class="truncate">${sName}</span>
+            </button>
+          </th>`;
+      });
+      headerHTML += `</tr>`;
+      headerTr.innerHTML = headerHTML;
+
+      // 2. Body Rows
+      let bodyHTML = '';
+
+      // Optionele Hulp-Rij (Eerste rij onder de namen met vaste titel)
+      if (enableHelpFeature) {
+        bodyHTML += `
+          <tr class="bg-indigo-50/40">
+            <td class="sticky-left p-4 font-bold text-indigo-900 font-heading text-lg border-r border-b border-slate-200 bg-indigo-50 shadow-sm">
+              <div class="flex items-center gap-2">
+                <span class="text-lg">?</span>
+                <span>Hulp</span>
+              </div>
+            </td>`;
+        
+        students.forEach((_, sIdx) => {
+          const helpPos = helpQueue.indexOf(sIdx);
+          const hasHelp = helpPos !== -1;
+          bodyHTML += `
+            <td class="p-3 text-center border-b border-slate-200">
+              <button onclick="toggleHelp(${sIdx})" class="w-14 h-14 rounded-2xl border-2 font-extrabold text-xl inline-flex items-center justify-center transition ${hasHelp ? 'bg-hulp-active border-yellow-400' : 'bg-white border-slate-200 text-slate-300 hover:text-slate-400'}">
+                ${hasHelp ? helpPos + 1 : '?'}
+              </button>
+            </td>`;
+        });
+        bodyHTML += `</tr>`;
+      }
+
+      // Taken Rijen met Vaste Taaknaam Kolom (Sticky Left)
+      tasks.forEach((t, tIdx) => {
+        const isMoetje = t.type === 'moetje';
+        bodyHTML += `
+          <tr class="${!isMoetje ? 'magje-col-bg' : ''}">
+            <td class="sticky-left p-4 font-bold text-slate-800 font-heading text-lg border-r border-b border-slate-200 shadow-sm ${!isMoetje ? 'bg-purple-50' : 'bg-white'}">
+              <div class="flex items-center gap-1.5">
+                ${isMoetje ? '<span class="text-amber-500 font-bold text-lg leading-none">★</span>' : ''}
+                <span>${t.name}</span>
+              </div>
+            </td>`;
+
+        students.forEach((_, sIdx) => {
+          const isSelected = activeStudentIndex === sIdx;
+          const status = matrixData[sIdx][tIdx];
+          bodyHTML += `
+            <td class="p-3 text-center border-b border-slate-100">
+              ${renderCellButton(sIdx, tIdx, status, isSelected)}
+            </td>`;
+        });
+
+        bodyHTML += `</tr>`;
+      });
+
+      bodyTbody.innerHTML = bodyHTML;
+    }
+
+    // GEDRAAIDE WEERGAVE: Taken in Rijen, Namen in Kolommen (Vaste header bovenaan, vaste kolom links)
+    function renderMatrixRotated() {
+      const headerTr = document.getElementById('matrix-header');
+      const bodyTbody = document.getElementById('matrix-body');
+
+      // 1. Vaste Header Rij (Sticky Top) met leeg Hoekcel (Sticky Top-Left)
+      let headerHTML = `
+        <tr class="bg-slate-100 border-b border-slate-200">
+          <th class="sticky-top-left bg-slate-100 p-4 min-w-[200px] shadow-sm border-b border-r border-slate-200"></th>`;
+
+      students.forEach((sName, sIdx) => {
+        const isSelected = activeStudentIndex === sIdx;
+        headerHTML += `
+          <th class="sticky-top p-3 text-center min-w-[130px] bg-slate-100 shadow-sm border-b border-slate-200">
+            <button onclick="selectStudent(${sIdx})" class="w-full text-center px-3 py-3 rounded-2xl font-heading text-lg font-bold transition flex items-center justify-center border-2 ${isSelected ? 'bg-indigo-600 text-white border-indigo-700 shadow-md scale-[1.02]' : 'bg-white text-slate-800 border-slate-200 hover:border-slate-300'}">
+              <span class="truncate">${sName}</span>
+            </button>
+          </th>`;
+      });
+      headerHTML += `</tr>`;
+      headerTr.innerHTML = headerHTML;
+
+      // 2. Body Rows
+      let bodyHTML = '';
+
+      // Optionele Hulp-Rij (Eerste rij onder de namen met vaste titel)
+      if (enableHelpFeature) {
+        bodyHTML += `
+          <tr class="bg-indigo-50/40">
+            <td class="sticky-left p-4 font-bold text-indigo-900 font-heading text-lg border-r border-b border-slate-200 bg-indigo-50 shadow-sm">
+              <div class="flex items-center gap-2">
+                <span class="text-lg">?</span>
+                <span>Hulp</span>
+              </div>
+            </td>`;
+        
+        students.forEach((_, sIdx) => {
+          const helpPos = helpQueue.indexOf(sIdx);
+          const hasHelp = helpPos !== -1;
+          bodyHTML += `
+            <td class="p-3 text-center border-b border-slate-200">
+              <button onclick="toggleHelp(${sIdx})" class="w-14 h-14 rounded-2xl border-2 font-extrabold text-xl inline-flex items-center justify-center transition ${hasHelp ? 'bg-hulp-active border-yellow-400' : 'bg-white border-slate-200 text-slate-300 hover:text-slate-400'}">
+                ${hasHelp ? helpPos + 1 : '?'}
+              </button>
+            </td>`;
+        });
+        bodyHTML += `</tr>`;
+      }
+
+      // Taken Rijen met Vaste Taaknaam Kolom (Sticky Left)
+      tasks.forEach((t, tIdx) => {
+        const isMoetje = t.type === 'moetje';
+        bodyHTML += `
+          <tr class="${!isMoetje ? 'magje-col-bg' : ''}">
+            <td class="sticky-left p-4 font-bold text-slate-800 font-heading text-lg border-r border-b border-slate-200 shadow-sm ${!isMoetje ? 'bg-purple-50' : 'bg-white'}">
+              <div class="flex items-center gap-1.5">
+                ${isMoetje ? '<span class="text-amber-500 font-bold text-lg leading-none">★</span>' : ''}
+                <span>${t.name}</span>
+              </div>
+            </td>`;
+
+        students.forEach((_, sIdx) => {
+          const isSelected = activeStudentIndex === sIdx;
+          const status = matrixData[sIdx][tIdx];
+          bodyHTML += `
+            <td class="p-3 text-center border-b border-slate-100">
+              ${renderCellButton(sIdx, tIdx, status, isSelected)}
+            </td>`;
+        });
+
+        bodyHTML += `</tr>`;
+      });
+
+      bodyTbody.innerHTML = bodyHTML;
+    }
+
+    // RENDER SINGLE CELL BUTTON
+    function renderCellButton(sIdx, tIdx, status, isSelected) {
+      if (status === 'gray') {
+        return `
+          <button disabled class="w-14 h-14 rounded-2xl border-2 bg-pastel-gray border-slate-200 text-slate-400 flex items-center justify-center mx-auto disabled-cell">
+            <svg class="w-6 h-6 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>`;
+      }
+
+      let colorClasses = '';
+      let iconHTML = '';
+
+      if (status === 'red') {
+        colorClasses = 'bg-pastel-red border-rose-300 text-rose-800';
+        iconHTML = `<span class="font-extrabold text-2xl font-heading">!</span>`;
+      } else if (status === 'orange') {
+        colorClasses = 'bg-pastel-orange border-amber-300 text-amber-800';
+        iconHTML = `<svg class="w-7 h-7 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+      } else if (status === 'green') {
+        colorClasses = 'bg-pastel-green border-emerald-300 text-emerald-800';
+        iconHTML = `<svg class="w-8 h-8 stroke-[3]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>`;
+      }
+
+      if (isSelected) {
+        colorClasses += ' active-cell';
+      } else {
+        colorClasses += ' opacity-40 hover:opacity-70';
+      }
+
+      return `
+        <button onclick="cellClick(${sIdx}, ${tIdx})" class="w-14 h-14 rounded-2xl border-2 flex items-center justify-center mx-auto transition-all ${colorClasses}">
+          ${iconHTML}
+        </button>`;
+    }
+
+    // STUDENT SELECTIE & INTERACTIE
+    function selectStudent(sIdx) {
+      if (activeStudentIndex === sIdx) {
+        // Deselect if clicking same student again
+        activeStudentIndex = null;
+        clearTimeout(autoDeselectTimer);
+      } else {
+        activeStudentIndex = sIdx;
+        
+        // Auto deselect na 15 sec inactiviteit
+        clearTimeout(autoDeselectTimer);
+        autoDeselectTimer = setTimeout(() => {
+          activeStudentIndex = null;
+          renderMatrix();
+        }, 15000);
+      }
+
+      renderMatrix();
+    }
+
+    function cellClick(sIdx, tIdx) {
+      if (activeStudentIndex !== sIdx) {
+        selectStudent(sIdx);
+        return;
+      }
+
+      clearTimeout(autoDeselectTimer);
+      autoDeselectTimer = setTimeout(() => {
+        activeStudentIndex = null;
+        renderMatrix();
+      }, 15000);
+
+      const currentStatus = matrixData[sIdx][tIdx];
+      if (currentStatus === 'red') {
+        matrixData[sIdx][tIdx] = 'orange';
+      } else if (currentStatus === 'orange') {
+        matrixData[sIdx][tIdx] = 'green';
+      } else if (currentStatus === 'green') {
+        matrixData[sIdx][tIdx] = 'red';
+      }
+
+      saveDataToStorage();
+      renderMatrix();
+    }
+
+    // HULP-KOLOM LOGICA
+    function toggleHelp(sIdx) {
+      if (activeStudentIndex !== sIdx) {
+        selectStudent(sIdx);
+      }
+
+      const existingIndex = helpQueue.indexOf(sIdx);
+      if (existingIndex !== -1) {
+        helpQueue.splice(existingIndex, 1);
+      } else {
+        helpQueue.push(sIdx);
+      }
+
+      renderMatrix();
+    }
+
+    // RESET FUNCTION
+    function resetProgress() {
+      if (confirm("Weet je zeker dat je alle statussen en hulpvragen wilt terugzetten naar 'Nog niet gestart'?")) {
+        students.forEach((_, sIdx) => {
+          tasks.forEach((_, tIdx) => {
+            if (matrixData[sIdx][tIdx] !== 'gray') {
+              matrixData[sIdx][tIdx] = 'red';
+            }
+          });
+        });
+        helpQueue = [];
+        activeStudentIndex = null;
+        saveDataToStorage();
+        renderMatrix();
+      }
+    }
+  </script>
+</body>
+</html>
+```
